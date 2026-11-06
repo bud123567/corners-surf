@@ -1,3 +1,9 @@
+// Keep the homepage address clean, including old bookmarks with queries or anchors.
+if (window.location.pathname.endsWith('/index.html')) {
+  const cleanPath = window.location.pathname.slice(0, -'index.html'.length);
+  window.history.replaceState(window.history.state, '', cleanPath + window.location.search + window.location.hash);
+}
+
 // Keep bookmarks from the original single-page site working.
 const currentPage = window.location.pathname.split('/').pop();
 if (currentPage === '' || currentPage === 'index.html') {
