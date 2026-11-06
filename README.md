@@ -1,2 +1,5 @@
-# corners-surf
-Corner's Surf Co. — surf lessons, rentals and surf shop in Old Orchard Beach, Maine
+# Corner’s Surf Co.
+
+Official website source for Corner’s Surf Co., Old Orchard Beach, Maine.
+
+Static HTML, CSS, JavaScript, images and videos. GitHub Pages publishes main from the repository root.
