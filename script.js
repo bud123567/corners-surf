@@ -60,6 +60,21 @@ if (lightbox) {
   lightbox.addEventListener('close', () => opener?.focus());
 }
 
+// Defer TikTok's heavy player until its selected card approaches the viewport.
+const loadTikTok = frame => {
+  if (frame && !frame.hasAttribute('src') && frame.dataset.src) frame.src = frame.dataset.src;
+};
+const tikTokObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const carousel = entry.target;
+    carousel.dataset.playerReady = 'true';
+    loadTikTok(carousel.querySelector('.coverflow-card[data-position="center"] iframe, .video-slide:not([hidden]) iframe'));
+    tikTokObserver.unobserve(carousel);
+  });
+}, {rootMargin: '200px'});
+document.querySelectorAll('.video-carousel').forEach(carousel => tikTokObserver.observe(carousel));
+
 const videoCarousel = document.querySelector('.video-carousel:not(.coverflow)');
 if (videoCarousel) {
   const videoSlides = [...videoCarousel.querySelectorAll('.video-slide')];
@@ -71,14 +86,13 @@ if (videoCarousel) {
     const next = (index + videoSlides.length) % videoSlides.length;
     if (next === currentVideo) return;
     const previousFrame = videoSlides[currentVideo].querySelector('iframe');
-    previousFrame.dataset.src = previousFrame.getAttribute('src');
-    previousFrame.removeAttribute('src');
+        previousFrame.removeAttribute('src');
     videoSlides[currentVideo].hidden = true;
     currentVideo = next;
     const slide = videoSlides[currentVideo];
     const frame = slide.querySelector('iframe');
     slide.hidden = false;
-    frame.src = frame.dataset.src;
+    loadTikTok(frame);
     videoChoices.forEach((button, i) => button.setAttribute('aria-pressed', String(i === currentVideo)));
     videoCarousel.querySelector('.video-count').textContent = `Video ${currentVideo + 1} of ${videoSlides.length}`;
   };
@@ -107,14 +121,15 @@ if (coverflow) {
   const rotate = index => {
     const next = (index + cards.length) % cards.length;
     if (next === active) return;
-    // Reload the outgoing player to stop its audio when it moves behind.
+    // Unload the outgoing player instead of downloading it again in the background.
     const outgoing = cards[active].querySelector('iframe');
-    outgoing.src = outgoing.getAttribute('src');
+    outgoing.removeAttribute('src');
     active = next;
     cards.forEach((card, i) => {
       const selected = i === active;
       card.dataset.position = selected ? 'center' : i === (active + 1) % cards.length ? 'right' : 'left';
       const frame = card.querySelector('iframe');
+      if (selected) loadTikTok(frame);
       frame.toggleAttribute('inert', !selected);
       frame.tabIndex = selected ? 0 : -1;
       card.querySelector('.coverflow-pick').hidden = selected;
@@ -139,14 +154,22 @@ if (coverflow) {
   });
 }
 
-// Equal groups make the logo loop seamless. Without JS all brands stay visible.
+// Desktop keeps the drifting strip; mobile uses a native swipe carousel.
 const brandStrip = document.querySelector('.brand-strip');
 if (brandStrip) {
   const track = brandStrip.querySelector('.brand-track');
   const group = brandStrip.querySelector('.brand-group');
-  const duplicate = group.cloneNode(true);
-  duplicate.setAttribute('aria-hidden', 'true');
-  duplicate.inert = true;
-  track.append(duplicate);
-  brandStrip.classList.add('is-ready');
+  const mobileBrands = matchMedia('(max-width:700px)');
+  const updateBrands = () => {
+    track.querySelector('[aria-hidden="true"]')?.remove();
+    if (!mobileBrands.matches) {
+      const duplicate = group.cloneNode(true);
+      duplicate.setAttribute('aria-hidden', 'true');
+      duplicate.inert = true;
+      track.append(duplicate);
+    }
+    brandStrip.classList.add('is-ready');
+  };
+  updateBrands();
+  mobileBrands.addEventListener('change', updateBrands);
 }
